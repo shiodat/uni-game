@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { GameState } from '../types/game';
 
@@ -26,9 +25,6 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, onReset }) =>
         <span>海の健康度</span>
         <span>{gameState.ecosystemHealth}%</span>
       </div>
-      {/* <Progress
-        value={gameState.ecosystemHealth}
-      /> */}
     <div
       className={`h-2 rounded-full transition-all duration-500 -mt-2 bg-gray-200`}
       style={{ width: `100%` }}
@@ -77,7 +73,7 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, onReset }) =>
                   key={`${message}-${index}`}
                   className="text-blue-600 transition-opacity duration-500"
                 >
-                  {message}
+                  {message.text}
                 </div>
               ))}
             </div>

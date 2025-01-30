@@ -15,7 +15,6 @@ const initialState: GameState = {
   warningMessage: '',
   ecosystemHealth: GAME_CONSTANTS.INITIAL_ECOSYSTEM_HEALTH,
   seaweedHealth: {},
-  gameTimer: GAME_CONSTANTS.INITIAL_GAME_TIMER,
   isPlaying: true,
   capturedUni: 0,
   missionMessages: [],
@@ -32,14 +31,42 @@ const createSeededRandom = (seed: number) => {
 export const useGame = () => {
   const [gameState, setGameState] = useState<GameState>(initialState);
   const [random] = useState(() => createSeededRandom(Date.now()));
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | undefined>(undefined);
+
+  // 生態系の健康度を更新する関数
+  const updateEcosystemHealth = useCallback(() => {
+    setGameState(prev => {
+      const seaweedCount = prev.seaCreatures.filter(c => c.type === 'seaweed').length;
+      const fishCount = prev.seaCreatures.filter(c => c.type === 'fish').length;
+      const uniCount = prev.seaCreatures.filter(c => c.type === 'uni').length;
+
+      // 理想的な状態に対する割合を計算
+      const seaweedHealth = seaweedCount == 0 ? 0 : Math.min(100, (seaweedCount / GAME_CONSTANTS.IDEAL_SEAWEED_COUNT) * 100);
+      const fishHealth = fishCount == 0 ? 0 : Math.min(100, (fishCount / GAME_CONSTANTS.IDEAL_FISH_COUNT) * 100);
+
+      // ウニは少ないほど健康度が高い（0匹が理想）
+      const uniImpact = uniCount === 0 ? 100 : Math.max(0, 100 - (uniCount / GAME_CONSTANTS.MAX_UNI_COUNT) * 100);
+
+      // 重み付けして計算（海藻: 40%, 魚: 30%, ウニの影響: 30%）
+      const newHealth = Math.min(Math.round(
+        (seaweedHealth * 0.4) +
+        (fishHealth * 0.3) +
+        (uniImpact * 0.3)
+      ), 100);
+
+      return {
+        ...prev,
+        ecosystemHealth: newHealth
+      };
+    });
+  }, []);
 
   const updateFishPositions = useCallback(() => {
     setGameState(prev => ({
       ...prev,
       seaCreatures: prev.seaCreatures.map(creature => {
         if (creature.type === 'fish') {
-          let newX = creature.x + (creature.direction * GAME_CONSTANTS.FISH_MOVEMENT_SPEED);
+          const newX = creature.x + (creature.direction * GAME_CONSTANTS.FISH_MOVEMENT_SPEED);
           if (newX > 90 || newX < 10) {
             return {
               ...creature,
@@ -55,6 +82,33 @@ export const useGame = () => {
 
     animationFrameRef.current = requestAnimationFrame(updateFishPositions);
   }, []);
+
+  // パーティクルの更新処理
+  useEffect(() => {
+    if (gameState.particles.length === 0) return;
+
+    const updateParticles = () => {
+      setGameState(prev => ({
+        ...prev,
+        particles: prev.particles
+          .map(p => ({
+            ...p,
+            x: p.x + Math.cos(p.angle) * 2,
+            y: p.y + Math.sin(p.angle) * 2,
+            life: p.life - 0.02
+          }))
+          .filter(p => p.life > 0)
+      }));
+    };
+
+    const particleInterval = setInterval(updateParticles, 50);
+    return () => clearInterval(particleInterval);
+  }, [gameState.particles.length]);
+
+  // 生物の数が変化するたびに健康度を更新
+  useEffect(() => {
+    updateEcosystemHealth();
+  }, [updateEcosystemHealth, gameState.seaCreatures.length]);
 
   const resetGame = useCallback(() => {
     const initialCreatures = INITIAL_CREATURES.map(creature => ({
@@ -80,10 +134,10 @@ export const useGame = () => {
     const newSeaweeds: SeaCreature[] = Array.from({ length: newSeaweedCount }).map(() => ({
       id: Date.now() + Math.random(),
       type: 'seaweed' as const,
-      x: 10 + random() * 80,
+      x: 10 + Math.random() * 80,
       y: 0,
       scale: 0,
-      height: 30 + random() * 20
+      height: 30 + Math.random() * 20
     })).map(seaweed => ({
       ...seaweed,
       y: getSeabedY(seaweed.x)
@@ -94,22 +148,22 @@ export const useGame = () => {
     const newFish: FishCreature[] = Array.from({ length: newFishCount }).map(() => ({
       id: Date.now() + Math.random(),
       type: 'fish' as const,
-      x: 20 + random() * 60,
-      y: 10 + random() * 30,
-      direction: random() < 0.5 ? 1 : -1
+      x: 20 + Math.random() * 60,
+      y: 10 + Math.random() * 30,
+      direction: Math.random() < 0.5 ? 1 : -1
     }));
 
     // まず海藻を scale: 0 で追加
-
-    const educationalMessageIndex = Math.floor(random() * EDUCATIONAL_MESSAGES.length);
+    const educationalMessageIndex = Math.floor(Math.random() * EDUCATIONAL_MESSAGES.length);
     const educationalMessage = EDUCATIONAL_MESSAGES[educationalMessageIndex];
+    const timestamp = Date.now();
     setGameState(prev => ({
       ...prev,
       seaCreatures: [...prev.seaCreatures, ...newSeaweeds, ...newFish],
       missionMessages: [
-        `ウニを${captureCount}匹駆除しました！`,
-        `海藻が${newSeaweedCount}本、魚が${newFishCount}匹増えました！`,
-        educationalMessage
+        { id: timestamp, text: `ウニを${captureCount}匹駆除しました！`},
+        { id: timestamp + 1, text: `海藻が${newSeaweedCount}本、魚が${newFishCount}匹増えました！` },
+        { id: timestamp + 2, text: educationalMessage}
       ]
     }));
 
@@ -209,8 +263,8 @@ export const useGame = () => {
         // const messageIndex = Math.floor(random() * EDUCATIONAL_MESSAGES.length);
         // const message = EDUCATIONAL_MESSAGES[messageIndex];
         const newCaptureCount = prev.capturedUni + 1;
-        const remainingUni = gameState.seaCreatures.filter(creature => creature.type === 'uni').length;
-        const newEcosystemHealth = newCaptureCount / (prev.capturedUni + remainingUni) * 100;
+        // const remainingUni = gameState.seaCreatures.filter(creature => creature.type === 'uni').length;
+        // const newEcosystemHealth = newCaptureCount / (prev.capturedUni + remainingUni) * 100;
 
         // 少し遅延して新しい生物を追加
         setTimeout(() => {
@@ -221,10 +275,10 @@ export const useGame = () => {
           ...prev,
           armState: 'catching',
 
-          ecosystemHealth: newEcosystemHealth,
+          // ecosystemHealth: updateEcosystemHealth,
           capturedUni: newCaptureCount,
           particles: [...prev.particles, ...particles],
-          missionMessages: ["ウニをつかみました！"],
+          missionMessages: [{ id: Date.now(), text: "ウニをつかみました！" }],
           seaCreatures: prev.seaCreatures.filter(c => c.id !== nearbyCreature.id),
         };
       }
@@ -286,7 +340,7 @@ export const useGame = () => {
         ...prev,
         gameCleared: true,
         isPlaying: false,
-        missionMessages: ['おめでとう！海の生態系が回復しました！'],
+        missionMessages: [{ id: Date.now(), text: 'おめでとう！海の生態系が回復しました！' }],
       }));
     }
   }, [gameState.seaCreatures, gameState.isPlaying]);

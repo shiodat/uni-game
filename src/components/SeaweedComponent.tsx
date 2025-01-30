@@ -5,14 +5,12 @@ import { getTerrainAngle } from '../utils/gameUtils';
 
 interface SeaweedComponentProps {
   x: number;
-  y: number;
   height: number;
   scale?: number;
 }
 
 export const SeaweedComponent: React.FC<SeaweedComponentProps> = ({
   x,
-  y,
   height,
   scale = 1
 }) => {

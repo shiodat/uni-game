@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { SeaweedComponent } from './SeaweedComponent';
 import { RobotComponent } from './RobotComponent';
 import { UniComponent } from './UniComponent';
@@ -64,7 +64,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState }) => {
           <div key={creature.id} style={commonStyle}>
             <SeaweedComponent
               x={creature.x}
-              y={creature.y}
               height={creature.height}
               scale={creature.scale}
             />

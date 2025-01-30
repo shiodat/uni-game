@@ -42,6 +42,11 @@ export type Particle = {
   life: number;
 };
 
+export type Message = {
+  id: number;
+  text: string;
+};
+
 export interface GameState {
 
   robotPosition: Position;
@@ -52,9 +57,8 @@ export interface GameState {
   warningMessage: string;
   ecosystemHealth: number;
   seaweedHealth: Record<number, number>;
-  gameTimer: number;
   isPlaying: boolean;
   capturedUni: number;
-  missionMessages: string[];
+  missionMessages: Message[];
   gameCleared: boolean;
 }

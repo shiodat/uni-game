@@ -8,8 +8,12 @@ export const GAME_CONSTANTS = {
 
   // ゲームバランス用の定数
   IDEAL_SEAWEED_COUNT: 8,
-  IDEAL_FISH_COUNT: 4,
-  MAX_UNI_COUNT: 2,
+  IDEAL_FISH_COUNT: 16,
+  MAX_UNI_COUNT: 0,
+
+  // パーティクルエフェクト用の定数
+  PARTICLE_COUNT: 100,
+  PARTICLE_LIFETIME: 1000,
 } as const;
 
 export const EDUCATIONAL_MESSAGES = [
